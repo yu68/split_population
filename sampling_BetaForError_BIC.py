@@ -5,7 +5,7 @@ import rpy2
 from math import log
 
 import sys,argparse
-from functions_2 import *
+from functions import *
 
 
 import matplotlib.pyplot as plt
