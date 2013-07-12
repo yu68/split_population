@@ -7,18 +7,20 @@ import numpy as np
 def ParseArg():
     p=argparse.ArgumentParser(description="get intensity of epi-modification on single nucleosome",epilog="library dependency: xplib")
     p.add_argument("-N","--Nucleosome",dest="nucleosome",type=str,help="xls file containing nucleosome location information from Danpos output")
-    p.add_argument("-b","--beds",nargs='+',dest="beds",type=str,help="bed/bam files for epigenetic data")
-    p.add_argument('-f','--fmt',type=str,default='bed',help='format: bed/bam,default:bed')
+    p.add_argument("-b","--bams",nargs='+',dest="bams",type=str,help="bed/bam files for epigenetic data")
+    p.add_argument('-f','--fmt',type=str,default='bam',help='format: bed/bam,default:bam')
     p.add_argument("-l","--length",dest="len",type=int,default=200,help="average length of ChIP-seq fragment,default:200")
     p.add_argument("-n","--name",nargs='+',dest='name',type=str,help='name of each bed sample (to be wrote on the header)')
+    p.add_argument('-r','--rangeS',type=int,default=100,help='search range to find the maximum Epi-intensity in each nucleosome location (default: 100bp)')
     p.add_argument("-w","--weightP",nargs='+',dest='weightP',type=int,default=[75,125],help='parameters to calculate the weight for each read,[half_len of core nucleosome region and half_len of whole regions],default: [75,125]')
     p.add_argument("-o","--output",dest="output",type=str,help="output file name (can be .txt)")
+    p.add_argument("-v",'--verbose',action='store_true',help='set to output shifted nucleosome centers for each histone mark, one bed file per mark')
     if len(sys.argv)==1:
         print >>sys.stderr,p.print_help()
         exit(0)
     return p.parse_args()
 
-def find_center(read,half_len,fmt):
+def find_center(read,fmt):
 
     # read.id in strand for bed with for columns
     if fmt=='bed':
@@ -34,6 +36,28 @@ def find_center(read,half_len,fmt):
     return center
 
 
+def getCount(data,chrom,center,fmt):
+    # get the count of each epi-mark in each nucleosome by searching from [nuc_center-rangeS, nuc_center+rangeS]
+    # stepsize: 2bp
+    max_count=0
+    offset=-rangeS
+    for off in range(-rangeS,rangeS,2):
+        if fmt=='bam':
+            query=data.query(Bed([chrom,center-ma-(half_len-75)+off,center+ma+(half_len-75)+off]),method='fetch')
+        else:
+            query=data.query(Bed([chrom,center-ma-(half_len-75)+off,center+ma+(half_len-75)+off]))
+        count=0
+        for j in query:
+            j_center=find_center(j,fmt)
+            weight = max(min(1,(ma-abs(j_center-(center+off)))*1.0/(ma-mi)),0)
+            count+=weight
+        if (count>max_count) or ((count>=max_count) and (abs(off)<abs(offset))): # choose the offset with largest count and smallest offset
+            max_count=count
+            offset=off
+    return [offset,max_count]
+
+
+
 '''
       mi
     -----
@@ -46,58 +70,75 @@ def find_center(read,half_len,fmt):
 
 '''
 
-global mi,ma,args
+global mi,ma,args,rangeS,half_len
 args=ParseArg()
 mi=args.weightP[0]
 ma=args.weightP[1]
+rangeS=args.rangeS
+half_len=int(args.len/2)
+
 
 
 def Main():
     args=ParseArg()
 
     #store bed files with indexing and count information:
-    bed={}
+    bam={}
 
     print >>sys.stderr,"Starting index bed files:"
-    for i in range(len(args.beds)):
+    for i in range(len(args.bams)):
         temp_name=args.name[i]
         print >>sys.stderr,"  #Indexing for bed file of",temp_name,"\r",
-        bed[temp_name]=DBI.init(args.beds[i],args.fmt)
+        bam[temp_name]=DBI.init(args.bams[i],args.fmt)
 
-    half_len=int(args.len)
     print >>sys.stderr
     print >>sys.stderr,"Reading nucleosome peak xls file from Danpos."
     nucleosomes=TableIO.parse(args.nucleosome,'metabed',header=True)
 
     print >>sys.stderr,"Start Counting..."
-    count_matrix=[]
-
 
     out=open(args.output,"w")
+    # -- for verbose ---
+    if args.verbose:
+        out_mark=[]
+        for n in args.name:
+            out_mark.append(open(n+'_shift_nucleosomes.bed','w'))
+    # ------------------ 
     line_head=open(args.nucleosome,'r').readline().strip()
-    line_head=line_head+"\t"+"\t".join(str(f) for f in args.name)
+    line_head=line_head+"\t"+"\t".join(str(f) for f in args.name)+'\t'+"\t".join(str(f)+'_off' for f in args.name)
     print >>out,line_head
+
+    num=0
     for i in nucleosomes:
+        num=num+1
         chrom=i.chr
       
         if chrom == 'chrY' or chrom == 'chrX' or chrom == 'chrM':
             continue
         center=int(i.start+i.end)/2
-        count=np.zeros(len(args.beds),dtype="float")
+        count=np.zeros(len(args.bams),dtype="float")
+        offset=np.zeros(len(args.bams),dtype='int')
         line=str(i)
-        for k,name in enumerate(bed.keys()):
-            if args.fmt=='bam':
-                query=bed[name].query(Bed([chrom,center-ma-(half_len-75),center+ma+(half_len-75)]),method='fetch')
-            else:
-                query=bed[name].query(Bed([chrom,center-ma-(half_len-75),center+ma+(half_len-75)]))
-            for j in query:
-                j_center=find_center(j,half_len,args.fmt)
-                weight = max(min(1,(ma-abs(j_center-center))*1.0/(ma-mi)),0)
-                count[k]+=weight
-        line = line + "\t" + "\t".join(str(f) for f in count)
+        for k,name in enumerate(bam.keys()):
+            [o,c]=getCount(bam[name],chrom,center,args.fmt)
+            count[k]=c
+            offset[k]=o
+            # -- for verbose ---
+            if args.verbose:
+                print >>out_mark[k],chrom+'\t%d\t%d'%(i.start+o,i.end+o)
+            # ------------------
+        line = line + "\t" + "\t".join(str(f) for f in count) + '\t' + "\t".join(str(f) for f in offset)
+        if num%10000==0:
+            print "processing %dth nucleosome..."%(num)    
         print >>out,line
-        count_matrix.append(count)
-
+    
+    out.close()
+    
+    # -- for verbose ---
+    if args.verbose:
+        for k in out_mark:
+            k.close()
+    # ------------------
 if __name__=="__main__":
     Main() 
 
