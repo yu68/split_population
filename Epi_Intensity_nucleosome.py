@@ -1,3 +1,5 @@
+from time import time
+
 import sys,argparse,os
 from xplib import TableIO
 from xplib import DBI
@@ -36,19 +38,14 @@ def find_center(read,fmt):
     return center
 
 
-def getCount(data,chrom,center,fmt):
+def getCount(read_centers,center):
     # get the count of each epi-mark in each nucleosome by searching from [nuc_center-rangeS, nuc_center+rangeS]
-    # stepsize: 2bp
+    # stepsize: 5bp
     max_count=0
     offset=-rangeS
-    for off in range(-rangeS,rangeS,2):
-        if fmt=='bam':
-            query=data.query(Bed([chrom,center-ma-(half_len-75)+off,center+ma+(half_len-75)+off]),method='fetch')
-        else:
-            query=data.query(Bed([chrom,center-ma-(half_len-75)+off,center+ma+(half_len-75)+off]))
+    for off in range(-rangeS,rangeS,5):
         count=0
-        for j in query:
-            j_center=find_center(j,fmt)
+        for j_center in read_centers:
             weight = max(min(1,(ma-abs(j_center-(center+off)))*1.0/(ma-mi)),0)
             count+=weight
         if (count>max_count) or ((count>=max_count) and (abs(off)<abs(offset))): # choose the offset with largest count and smallest offset
@@ -95,7 +92,7 @@ def Main():
     print >>sys.stderr,"Reading nucleosome peak xls file from Danpos."
     nucleosomes=TableIO.parse(args.nucleosome,'metabed',header=True)
 
-    print >>sys.stderr,"Start Counting..."
+    print >>sys.stderr,"Initial output files..."
 
     out=open(args.output,"w")
     # -- for verbose ---
@@ -107,20 +104,29 @@ def Main():
     line_head=open(args.nucleosome,'r').readline().strip()
     line_head=line_head+"\t"+"\t".join(str(f) for f in args.name)+'\t'+"\t".join(str(f)+'_off' for f in args.name)
     print >>out,line_head
-
+    
+    print >>sys.stderr,"Start Counting..."
     num=0
+    t0 = time()
     for i in nucleosomes:
-        num=num+1
         chrom=i.chr
-      
+        if i.smt_pval>0.01 or i.fuzziness_pval>0.01: continue # only choose nucleosomes with high value and low fuzziness   
         if chrom == 'chrY' or chrom == 'chrX' or chrom == 'chrM':
             continue
+        num=num+1
         center=int(i.start+i.end)/2
         count=np.zeros(len(args.bams),dtype="float")
         offset=np.zeros(len(args.bams),dtype='int')
         line=str(i)
         for k,name in enumerate(bam.keys()):
-            [o,c]=getCount(bam[name],chrom,center,args.fmt)
+            if args.fmt=='bam':
+                query=bam[name].query(Bed([chrom,center-ma-(half_len-75)-rangeS,center+ma+(half_len-75)+rangeS]),method='fetch')
+            else:
+                query=bam[name].query(Bed([chrom,center-ma-(half_len-75)-rangeS,center+ma+(half_len-75)+rangeS]))
+            read_centers=[]
+            for j in query:
+                read_centers.append(find_center(j,args.fmt))
+            [o,c]=getCount(read_centers,center)
             count[k]=c
             offset[k]=o
             # -- for verbose ---
@@ -128,10 +134,12 @@ def Main():
                 print >>out_mark[k],chrom+'\t%d\t%d'%(i.start+o,i.end+o)
             # ------------------
         line = line + "\t" + "\t".join(str(f) for f in count) + '\t' + "\t".join(str(f) for f in offset)
-        if num%10000==0:
-            print "processing %dth nucleosome..."%(num)    
+        if num%20000==0:
+            t1 = time()
+            print >>sys.stderr,"processing %dth nucleosome..., time: %.2fs."%(num,t1-t0),'\r',
+            t0 = time()    
         print >>out,line
-    
+    print
     out.close()
     
     # -- for verbose ---
