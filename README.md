@@ -5,7 +5,7 @@ split\_population based on single nucleosome-level histone mark data
 -----
 
 ####STEP 1
-get absolute intensity of histone modification intensities in single nucleosome level
+get absolute intensity of histone modification intensities in single nucleosome level  
 _script_: Epi_Intensity_nucleosome.py
 ```
 usage: Epi_Intensity_nucleosome.py [-h] [-N NUCLEOSOME] [-b BAMS [BAMS ...]]
@@ -42,7 +42,7 @@ library dependency: xplib
 ```
 
 ####STEP 2
-Generate relative intensities of histone modifications in single nucleosome level from absolute intensities
+Generate relative intensities of histone modifications in single nucleosome level from absolute intensities  
 _script_: Epi_Intensity_toRelative.R
 ```
 usage: Rscript Epi_Intensity_toRelative.R [-h] [-p PDF] [-o OUTPUT] [-s SIZE]
