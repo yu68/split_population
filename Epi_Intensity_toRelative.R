@@ -69,10 +69,11 @@ cat("Distribution of sampled max values:\n")
 for (i in 9:(8+n_hmark)) {
   cat("  ",colnames(Epi_Intensity)[i],'\t')
   Epi_Intensity_relative[,i]=find_max(Epi_Intensity[,i],size,iter,colnames(Epi_Intensity)[i])
-  Epi_Intensity_relative[Epi_Intensity_relative[,i]>1,i]=1
+  select=(Epi_Intensity_relative[,i]<=1)
+  selection=selection&select
 }
 dev.off()
 #choose only ones with relative intensity less than one
-write.table(Epi_Intensity_relative[,c(1:(8+n_hmark))],output,sep='\t',col.names=T,row.names=F,quote=F)
+write.table(Epi_Intensity_relative[selection,c(1:(8+n_hmark))],output,sep='\t',col.names=T,row.names=F,quote=F)
 
 

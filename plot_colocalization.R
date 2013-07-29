@@ -12,7 +12,7 @@ library("scales")
 library("ggplot2")
 library('grid')
 
-data = read.table(input,sep='\t',header=T,nrow=50000)
+data = read.table(input,sep='\t',header=T,nrow=200000)
 if ((ncol(data)-8)%%(cluster_n+1) != 0){
 stop("cluster_n is inconsistent with input data")}
 hist_n = (ncol(data)-8)/(cluster_n+1)
@@ -37,8 +37,8 @@ co.matrix <- function(cluster){
   df_matrix=melt(co_matrix)
   df_matrix$X1 <- factor(df_matrix$X1, levels=rev(unique(as.character(df_matrix$X2)))) # reorder one dimension
   plot = ggplot(melt(co_matrix))+geom_tile(aes(x=X1,y=X2,fill=value),colour='black')+scale_fill_gradientn(values=rescale(b),colours=my.colors,name='log-ratio')+po.nopanel
-  plot = plot + theme(axis.text.x = element_text(size=5,colour='black'), 
-                      axis.text.y = element_text(size=5,colour='black'),
+  plot = plot + theme(axis.text.x = element_text(size=6,colour='black'), 
+                      axis.text.y = element_text(size=6,colour='black'),
                       plot.title = element_text(size=10))
   plot = plot + xlab('') + ylab('') + ggtitle(paste("Co-localization in sub-population",cluster,sep=' '))
   #mtext(text=1:7,side=2,line=0.3,at=seq(0,(hist_n-1))/(hist_n-1),las=1)
