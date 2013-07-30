@@ -1,16 +1,25 @@
 #!/bin/Rscript
-args <- commandArgs(TRUE)
-if (length(args)<3) {
-stop("plot_colocalization.R <input_file> <cluster_n> <output.pdf>\nPlease specify all three parameters")}
-input = args[1]
-cluster_n = eval (parse(text=args[2]))
-output = args[3]
 
-library("fields")
-library("reshape")
-library("scales")
-library("ggplot2")
-library('grid')
+list.of.packages <- c("argparse","fields","reshape","scales","ggplot2","grid")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages,repos="http://R-Forge.R-project.org")
+suppressPackageStartupMessages(require(argparse))
+suppressPackageStartupMessages(require(fields))
+suppressPackageStartupMessages(require(reshape))
+suppressPackageStartupMessages(require(scales))
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(grid))
+
+parser <- ArgumentParser(description="Plot colocalization heatmap for histone modifications in each sub-population",epilog="Require libraries: argparse, ggplot2, grid")
+parser$add_argument("-n","--cluster_n",type='integer',default=3,help='cluster number for the split-population results,[default \"%(default)s\"]')
+parser$add_argument("-o","--output",default="colocalization-plot.pdf",help='output pdf file contains the graphic co-localization results, [default \"%(default)s\"]')
+parser$add_argument("input",help='input file, output from split-population program with binary signal of histone modifications in each sub-population')
+
+args <- parser$parse_args()
+
+input=args$input
+cluster_n=args$cluster_n
+output=args$output
 
 data = read.table(input,sep='\t',header=T,nrow=200000)
 if ((ncol(data)-8)%%(cluster_n+1) != 0){
@@ -47,7 +56,7 @@ co.matrix <- function(cluster){
 }
 
 
-pdf(output,width=5,height=6)
+pdf(output,width=5,height=2*cluster_n)
 vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
 grid.newpage()
 pushViewport(viewport(layout = grid.layout(3, 1)))
