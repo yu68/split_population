@@ -17,8 +17,16 @@ Rscript Epi_Intensity_toRelative.R -p Distribution_of_Max_Intensity_1E-2_500bp.p
 
 # Step3: Run the split population program
 
-python split_population_fixedCluster.py Epi_Intensity_nucleosome_relative_1E-2_500bp.txt -c 3 -o _matrix_500bp.txt -i 50 -d -v
+#python split_population_fixedCluster.py Epi_Intensity_nucleosome_relative_1E-2_500bp.txt -c 3 -o _matrix_500bp.txt -i 50 -d -v
 
 
 # Step4: downstream analysis
-Rscript plot_colocalization.R <output_of_step3> -n 3 -o colocalization_plot_500bp.pdf
+#Rscript plot_colocalization.R <output_of_step3> -n 3 -o colocalization_plot_500bp.pdf
+
+
+# Step5: visualize examples
+python visualize_nucleosome_pattern_chromatinState.py -i Clut-3_Hist-7_Nucleo-1266072_beta-500_matrix_500bp.txt -r chr6:122651369-122670010 -o visualize_nucleosome_Nanog_500bp.pdf
+python visualize_nucleosome_pattern_chromatinState.py -i Clut-3_Hist-7_Nucleo-1266072_beta-500_matrix_500bp.txt -r chr17:35640095-35651965 -o visualize_nucleosome_Pou5f1_500bp.pdf
+python visualize_nucleosome_pattern_chromatinState.py -i Clut-3_Hist-7_Nucleo-1266072_beta-500_matrix_500bp.txt -r chr9:110618323-110655914 -o visualize_nucleosome_Pth1r_500bp.pdf
+
+

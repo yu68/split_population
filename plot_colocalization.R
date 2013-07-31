@@ -21,7 +21,7 @@ input=args$input
 cluster_n=args$cluster_n
 output=args$output
 
-data = read.table(input,sep='\t',header=T,nrow=200000)
+data = read.table(input,sep='\t',header=T,nrow=500000)
 if ((ncol(data)-8)%%(cluster_n+1) != 0){
 stop("cluster_n is inconsistent with input data")}
 hist_n = (ncol(data)-8)/(cluster_n+1)

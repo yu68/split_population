@@ -87,7 +87,7 @@ def Main():
         temp_name=args.name[i]
         print >>sys.stderr,"  #Indexing for bed file of",temp_name,"\r",
         bam[temp_name]=DBI.init(args.bams[i],args.fmt)
-
+    
     print >>sys.stderr
     print >>sys.stderr,"Reading nucleosome peak xls file from Danpos."
     nucleosomes=TableIO.parse(args.nucleosome,'metabed',header=True)
@@ -118,7 +118,7 @@ def Main():
         count=np.zeros(len(args.bams),dtype="float")
         offset=np.zeros(len(args.bams),dtype='int')
         line=str(i)
-        for k,name in enumerate(bam.keys()):
+        for k,name in enumerate(args.name):
             if args.fmt=='bam':
                 query=bam[name].query(Bed([chrom,center-ma-(half_len-75)-rangeS,center+ma+(half_len-75)+rangeS]),method='fetch')
             else:
