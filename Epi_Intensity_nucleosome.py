@@ -12,7 +12,7 @@ def ParseArg():
     p.add_argument("-b","--bams",nargs='+',dest="bams",type=str,help="bed/bam files for epigenetic data")
     p.add_argument('-f','--fmt',type=str,default='bam',help='format: bed/bam,default:bam')
     p.add_argument("-l","--length",dest="len",type=int,default=200,help="average length of ChIP-seq fragment,default:200")
-    p.add_argument("-n","--name",nargs='+',dest='name',type=str,help='name of each bed sample (to be wrote on the header)')
+    p.add_argument("-n","--name",nargs='+',dest='name',type=str,help='name of each bam/bed sample (to be wrote on the header)')
     p.add_argument('-r','--rangeS',type=int,default=100,help='search range to find the maximum Epi-intensity in each nucleosome location (default: 100bp)')
     p.add_argument("-w","--weightP",nargs='+',dest='weightP',type=int,default=[75,125],help='parameters to calculate the weight for each read,[half_len of core nucleosome region and half_len of whole regions],default: [75,125]')
     p.add_argument("-o","--output",dest="output",type=str,help="output file name (can be .txt)")
@@ -82,10 +82,10 @@ def Main():
     #store bed files with indexing and count information:
     bam={}
 
-    print >>sys.stderr,"Starting index bed files:"
+    print >>sys.stderr,"Starting index bam/bed files:"
     for i in range(len(args.bams)):
         temp_name=args.name[i]
-        print >>sys.stderr,"  #Indexing for bed file of",temp_name,"\r",
+        print >>sys.stderr,"  #Indexing for bam/bed file of",temp_name,"\r",
         bam[temp_name]=DBI.init(args.bams[i],args.fmt)
     
     print >>sys.stderr
@@ -111,7 +111,7 @@ def Main():
     for i in nucleosomes:
         chrom=i.chr
         if i.smt_pval>0.01 or i.fuzziness_pval>0.01: continue # only choose nucleosomes with high value and low fuzziness   
-        if chrom == 'chrY' or chrom == 'chrX' or chrom == 'chrM':
+        if "random" in chrom or chrom == 'chrM':
             continue
         num=num+1
         center=int(i.start+i.end)/2

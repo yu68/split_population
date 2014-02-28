@@ -23,7 +23,7 @@ def ParseArg():
     p.add_argument('-c','--clu_n',dest='clu_n',default=3 ,type=int,help='number of clusters (populations),default:3')
     p.add_argument('-r','--region',dest='region',type=str,help="Genomic regions to be drawn, example: 'chr13:3220000-3350000'")
     p.add_argument('-o','--output',dest='output',type=str,help='output figure file, can be .pdf/eps/png/jpg...')
-    p.add_argument("-g","--gene",type=str,dest="genetab",default='/home/yu68/xiaopeng-BAM2x/ensambl_mm9_gene.tab',  help="Known Gene Tab file (Download From UCSC genome browser, default: mouse mm9 )")
+    p.add_argument("-g","--gene",type=str,dest="genetab",default='/home/yu68/xiaopeng-BAM2x/refseqgene_mm9.txt',  help="Known Gene Tab file (Download From UCSC genome browser, default: mouse mm9 )")
     p.add_argument('-b','--bed',action='store_true',help='If set, print out bed file to be uploaded to UCSC browser with chromatin state information')
     p.add_argument('-e','--emission',dest='emission',type=str,default='/home/yu68/split_population/chromHMM/output_model_E14/emissions_15.txt',help='emission matrix file from chromHMM output')
     p.add_argument('-s','--segment',dest='segment',type=str,default='/home/yu68/split_population/chromHMM/output_model_E14/E14_15_segments.bed',help='segment bed file from chromHMM output, for distribution of all chromatin states')
@@ -41,17 +41,20 @@ def histone2state(histone_pattern,count):
     prob=robjects.r('log(as.matrix(emission)) %*% pattern + log(as.matrix(1-emission)) %*% (1-pattern)')  
     return np.argmax(np.log(count)+np.array(prob).T[0])+1
 
-def addGeneToFig(gene,ax,start,name=0,bottom=0):
+def addGeneToFig(gene,ax,start,end,name=0,bottom=0):
 
     '''
     add gene to figures
         start is the start of query region
     '''
     if name==1:
-        ax.text((gene.start+start)/2,bottom+0.005,gene.id,fontsize=9)
+        if gene.start>start:
+            ax.text((1.0*gene.start+0.0*start),bottom+0.015,gene.id.split("&")[0],fontsize=6,horizontalalignment='right')
+        else:
+            ax.text((1.0*gene.stop+0.0*end),bottom+0.015,gene.id.split("&")[0],fontsize=6,horizontalalignment='left')
     cds=gene.cds()
 
-    utr5=gene.new_utr5()
+    utr5=gene.utr5()
     utr3=gene.utr3()
     if cds.stop!=cds.start:
         cds_exons=cds.Exons()
@@ -63,12 +66,19 @@ def addGeneToFig(gene,ax,start,name=0,bottom=0):
     if not utr5 is None:
         for utr5_exon in utr5.Exons():
             ax.bar(utr5_exon.start,0.01,utr5_exon.stop-utr5_exon.start,color="blue",edgecolor="blue",alpha=1,bottom=bottom+0.005)
+    interval=(end-start)/100
+    yloc=bottom+0.01
     for intron in gene.Introns():
-        if intron.strand=="+":
-            ax.arrow(intron.start,bottom+0.01,9*(intron.stop-intron.start)/10,0,color="black",edgecolor="black",alpha=0.7,width=0.002,head_width=0.004,head_length=(intron.stop-intron.start)/10,linestyle="dotted")
-        else:
-            ax.arrow(intron.stop,bottom+0.01,-9*(intron.stop-intron.start)/10,0,color="black",edgecolor="black",alpha=0.7,width=0.002,head_width=0.0044,head_length=(intron.stop-intron.start)/10)
-
+        ax.plot([intron.start,intron.stop],[yloc,yloc],lw=0.5,color='k') 
+        for i in range((intron.stop-intron.start)/interval):
+            if intron.strand=="+":
+                loc=intron.start+(i+1)*interval
+                x=[loc-0.3*interval,loc,loc-0.3*interval]
+            else:
+                loc=intron.stop-(i+1)*interval
+                x=[loc+0.3*interval,loc,loc+0.3*interval] 
+            y=[yloc-0.01,yloc,yloc+0.01]
+            ax.plot(x,y,color='k',lw=0.5)
 
 
 def Main():
@@ -193,7 +203,7 @@ def Main():
         index=0
         while(1):
             if i.start > bottoms[index]:
-                addGeneToFig(i,ax,start,1,0.03*index+y_nucle+0.05)
+                addGeneToFig(i,ax,start,end,1,0.03*index+y_nucle+0.05)
                 bottoms[index]=i.stop
                 break
             index+=1
@@ -288,6 +298,7 @@ def Main():
 
     plt.title("Region: ["+chro+": %d-%d]"%(start,end),size=14)
     plt.savefig(args.output)
+    plt.close()
 
 if __name__=="__main__":
     Main()
