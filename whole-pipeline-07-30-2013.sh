@@ -1,6 +1,7 @@
-
+# Go to the folder: /home/yu68/split_population/program/
+#
 # Step1: get the absolute intensities of histone marks in single nucleosome level 
-#   1. change ChIP-seq fragment length as 500
+#   1. change ChIP-seq fragment length as 300
 #   2. alllow search for neiboering regions to find histone mark peaks
 
 folder=~/ChIPseq_map_BAM/
